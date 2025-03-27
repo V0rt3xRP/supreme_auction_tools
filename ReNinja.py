@@ -16,6 +16,7 @@ import tempfile
 import zipfile
 from packaging import version
 import winreg  # For Windows registry access
+import webbrowser
 
 # Current version of the application
 APP_VERSION = "1.0.3"
@@ -24,184 +25,64 @@ GITHUB_REPO = "V0rt3xRP/supreme_auction_tools"  # Updated repository
 UPDATE_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 TEMP_UPDATE_DIR = os.path.join(tempfile.gettempdir(), "reninja_update")
 
-def get_installation_path():
-    """Get the installation path from Windows registry"""
-    try:
-        # Adjust these values based on your Inno Setup configuration
-        reg_path = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\ReNinja_is1"
-        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, reg_path, 0, winreg.KEY_READ) as key:
-            install_path = winreg.QueryValueEx(key, "InstallLocation")[0]
-            return install_path
-    except Exception:
-        return os.path.dirname(os.path.abspath(__file__))
-
 class UpdateChecker:
-    def __init__(self, parent, current_version):
-        self.parent = parent
-        self.current_version = current_version
-        self.install_path = get_installation_path()
-        
-    def check_for_updates(self):
+    CURRENT_VERSION = "1.0.3"  # Update this when you release new versions
+    GITHUB_API_URL = "https://api.github.com/repos/V0rt3xRP/supreme_auction_tools/releases/latest"
+
+    @staticmethod
+    def check_for_updates():
         try:
-            response = requests.get(UPDATE_URL, timeout=5)
+            response = requests.get(UpdateChecker.GITHUB_API_URL)
             if response.status_code == 200:
                 latest_release = response.json()
-                latest_version = latest_release['tag_name'].lstrip('v')
+                latest_version = latest_release['tag_name'].replace('v', '')
                 
-                if version.parse(latest_version) > version.parse(self.current_version):
-                    # Look for the installer asset
-                    installer_asset = next(
-                        (asset for asset in latest_release['assets'] 
-                         if asset['name'].endswith('.exe')),
-                        None
-                    )
-                    
-                    if installer_asset:
-                        self.show_update_dialog(
-                            latest_version, 
-                            latest_release['body'], 
-                            installer_asset['browser_download_url']
-                        )
-                        return True
-            return False
+                if version.parse(latest_version) > version.parse(UpdateChecker.CURRENT_VERSION):
+                    return True, latest_version, latest_release['html_url']
+            return False, None, None
         except Exception as e:
             print(f"Error checking for updates: {e}")
-            return False
-    
-    def show_update_dialog(self, new_version, changelog, download_url):
-        update_window = ctk.CTkToplevel(self.parent)
-        update_window.title("Update Available")
-        update_window.geometry("500x400")
-        update_window.resizable(False, False)
+            return False, None, None
+
+class UpdateNotification(ctk.CTkToplevel):
+    def __init__(self, parent, latest_version, download_url):
+        super().__init__(parent)
         
-        # Make window modal
-        update_window.transient(self.parent)
-        update_window.grab_set()
+        self.title("Update Available")
+        self.geometry("400x150")
         
-        # Create content frame
-        content = ctk.CTkFrame(update_window, fg_color="transparent")
-        content.pack(fill="both", expand=True, padx=20, pady=20)
+        # Center the window
+        self.update_idletasks()
+        x = parent.winfo_x() + (parent.winfo_width() - self.winfo_width()) // 2
+        y = parent.winfo_y() + (parent.winfo_height() - self.winfo_height()) // 2
+        self.geometry(f"+{x}+{y}")
         
-        # Update message
-        ctk.CTkLabel(
-            content,
-            text=f"A new version is available!",
-            font=ctk.CTkFont(size=20, weight="bold")
-        ).pack(pady=(0, 10))
+        # Make window float on top
+        self.attributes('-topmost', True)
         
-        ctk.CTkLabel(
-            content,
-            text=f"Current version: {self.current_version}\nNew version: {new_version}",
-            font=ctk.CTkFont(size=14)
-        ).pack(pady=(0, 10))
+        # Add widgets
+        ctk.CTkLabel(self, 
+                    text=f"A new version (v{latest_version}) is available!",
+                    font=("Arial", 14, "bold")).pack(pady=10)
         
-        # Changelog
-        changelog_frame = ctk.CTkFrame(content)
-        changelog_frame.pack(fill="both", expand=True, pady=(0, 20))
+        ctk.CTkLabel(self, 
+                    text="Would you like to download the update?",
+                    font=("Arial", 12)).pack(pady=5)
         
-        changelog_label = ctk.CTkLabel(
-            changelog_frame,
-            text="Changelog:",
-            font=ctk.CTkFont(size=14, weight="bold")
-        )
-        changelog_label.pack(anchor="w", padx=10, pady=(10, 0))
+        button_frame = ctk.CTkFrame(self)
+        button_frame.pack(pady=10)
         
-        changelog_text = ctk.CTkTextbox(
-            changelog_frame,
-            wrap="word",
-            height=150
-        )
-        changelog_text.pack(fill="both", expand=True, padx=10, pady=10)
-        changelog_text.insert("1.0", changelog)
-        changelog_text.configure(state="disabled")
+        ctk.CTkButton(button_frame, 
+                     text="Download", 
+                     command=lambda: self.open_download(download_url)).pack(side="left", padx=10)
         
-        # Buttons frame
-        buttons_frame = ctk.CTkFrame(content, fg_color="transparent")
-        buttons_frame.pack(fill="x", pady=(0, 10))
-        
-        def start_update():
-            update_window.destroy()
-            self.download_and_install_update(download_url)
-        
-        ctk.CTkButton(
-            buttons_frame,
-            text="Update Now",
-            command=start_update,
-            width=120
-        ).pack(side="left", padx=5)
-        
-        ctk.CTkButton(
-            buttons_frame,
-            text="Later",
-            command=update_window.destroy,
-            width=120
-        ).pack(side="right", padx=5)
-    
-    def download_and_install_update(self, download_url):
-        try:
-            # Create progress window
-            progress_window = ctk.CTkToplevel(self.parent)
-            progress_window.title("Downloading Update")
-            progress_window.geometry("300x150")
-            progress_window.resizable(False, False)
-            progress_window.transient(self.parent)
-            progress_window.grab_set()
-            
-            # Progress frame
-            progress_frame = ctk.CTkFrame(progress_window, fg_color="transparent")
-            progress_frame.pack(fill="both", expand=True, padx=20, pady=20)
-            
-            status_label = ctk.CTkLabel(
-                progress_frame,
-                text="Downloading update...",
-                font=ctk.CTkFont(size=14)
-            )
-            status_label.pack(pady=(0, 10))
-            
-            progress_bar = ctk.CTkProgressBar(progress_frame)
-            progress_bar.pack(fill="x", pady=(0, 10))
-            progress_bar.set(0)
-            
-            # Download the update
-            response = requests.get(download_url, stream=True)
-            total_size = int(response.headers.get('content-length', 0))
-            
-            # Create temp directory if it doesn't exist
-            os.makedirs(TEMP_UPDATE_DIR, exist_ok=True)
-            installer_path = os.path.join(TEMP_UPDATE_DIR, "ReNinja_Setup.exe")
-            
-            # Download with progress
-            block_size = 1024
-            downloaded = 0
-            
-            with open(installer_path, 'wb') as f:
-                for data in response.iter_content(block_size):
-                    f.write(data)
-                    downloaded += len(data)
-                    progress = downloaded / total_size if total_size > 0 else 0
-                    progress_bar.set(progress)
-                    progress_window.update()
-            
-            progress_window.destroy()
-            
-            # Run the installer
-            if messagebox.askyesno("Update Ready", 
-                                 "The update has been downloaded. The application will close "
-                                 "and the installer will start. Continue?"):
-                # Start installer and close application
-                subprocess.Popen([installer_path])
-                self.parent.quit()
-            
-        except Exception as e:
-            messagebox.showerror("Update Error", 
-                               f"An error occurred during the update:\n{str(e)}")
-            
-            # Clean up
-            try:
-                if os.path.exists(installer_path):
-                    os.remove(installer_path)
-            except:
-                pass
+        ctk.CTkButton(button_frame, 
+                     text="Later", 
+                     command=self.destroy).pack(side="left", padx=10)
+
+    def open_download(self, url):
+        webbrowser.open(url)
+        self.destroy()
 
 class ImageRenamerApp:
     def __init__(self):
@@ -212,7 +93,7 @@ class ImageRenamerApp:
         self.app.minsize(800, 600)  # Set minimum window size to prevent too small windows
 
         # Initialize update checker
-        self.update_checker = UpdateChecker(self.app, APP_VERSION)
+        self.update_checker = UpdateChecker()
         
         # Check for updates after a short delay
         self.app.after(2000, self.check_for_updates)
@@ -1659,15 +1540,9 @@ class ImageRenamerApp:
             self.mystory_status.configure(text=f"Selected output folder: {folder_selected}")
 
     def check_for_updates(self):
-        """Check for updates in the background"""
-        def check():
-            self.update_checker.check_for_updates()
-        
-        # Run the check in a separate thread to avoid blocking the UI
-        import threading
-        thread = threading.Thread(target=check)
-        thread.daemon = True
-        thread.start()
+        has_update, latest_version, download_url = UpdateChecker.check_for_updates()
+        if has_update:
+            UpdateNotification(self, latest_version, download_url)
 
 if __name__ == "__main__":
     app = ImageRenamerApp()
