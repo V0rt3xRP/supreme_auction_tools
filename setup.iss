@@ -1,12 +1,12 @@
 #define MyAppName "ReNinja"
 #define MyAppVersion "1.0.3"
-#define MyAppPublisher "Your Company Name"
-#define MyAppURL "https://github.com/your-username/your-repo"
+#define MyAppPublisher "V0rt3xRP"
+#define MyAppURL "https://github.com/V0rt3xRP/supreme_auction_tools"
 #define MyAppExeName "ReNinja.exe"
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId in installers for other applications.
-AppId={{YOUR-GUID-HERE}}
+AppId={{A1B2C3D4-E5F6-4321-8765-9ABCDEF01234}}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppVerName={#MyAppName} {#MyAppVersion}

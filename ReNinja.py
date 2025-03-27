@@ -20,7 +20,7 @@ import winreg  # For Windows registry access
 # Current version of the application
 APP_VERSION = "1.0.3"
 APP_NAME = "ReNinja"
-GITHUB_REPO = "your-username/your-repo"  # Replace with your GitHub repository
+GITHUB_REPO = "V0rt3xRP/supreme_auction_tools"  # Updated repository
 UPDATE_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 TEMP_UPDATE_DIR = os.path.join(tempfile.gettempdir(), "reninja_update")
 

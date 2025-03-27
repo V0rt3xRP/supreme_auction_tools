@@ -15,7 +15,7 @@ A powerful image batch renaming tool with CSV mapping support.
 
 ## Installation
 
-1. Download the latest installer from the [Releases](../../releases) page
+1. Download the latest installer from the [Releases](https://github.com/V0rt3xRP/supreme_auction_tools/releases) page
 2. Run the installer
 3. Follow the installation wizard
 
@@ -23,8 +23,8 @@ A powerful image batch renaming tool with CSV mapping support.
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/your-username/your-repo.git
-cd your-repo
+git clone https://github.com/V0rt3xRP/supreme_auction_tools.git
+cd supreme_auction_tools
 ```
 
 2. Create a virtual environment:
@@ -79,4 +79,4 @@ The application checks for updates automatically on startup. When an update is a
 
 ## License
 
-[Your License] © [Your Name] 
+MIT License © V0rt3xRP 
