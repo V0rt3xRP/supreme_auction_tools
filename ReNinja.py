@@ -1,12 +1,12 @@
 import customtkinter as ctk
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, colorchooser
 import csv
 import os
 import shutil
 import subprocess
 import time
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageDraw, ImageFont
 import pandas as pd
 import random
 import requests
@@ -19,14 +19,14 @@ import winreg  # For Windows registry access
 import webbrowser
 
 # Current version of the application
-APP_VERSION = "1.0.3"
+APP_VERSION = "1.1.0"
 APP_NAME = "ReNinja"
 GITHUB_REPO = "V0rt3xRP/supreme_auction_tools"  # Updated repository
 UPDATE_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 TEMP_UPDATE_DIR = os.path.join(tempfile.gettempdir(), "reninja_update")
 
 class UpdateChecker:
-    CURRENT_VERSION = "1.0.3"  # Update this when you release new versions
+    CURRENT_VERSION = "1.1.0"  # Update this when you release new versions
     GITHUB_API_URL = "https://api.github.com/repos/V0rt3xRP/supreme_auction_tools/releases/latest"
 
     @staticmethod
@@ -193,7 +193,7 @@ class ImageRenamerApp:
         tools = [
             ("ReNinja", self.show_reninja_tool, "CSV-based image renaming tool"),
             ("ReMystery", self.show_mystory_tool, "Sequential batch image renaming"),
-            # Add more tools here as needed
+            ("ReMark", self.show_remark_tool, "Add watermark to catalog images")
         ]
 
         for tool_name, command, description in tools:
@@ -280,6 +280,21 @@ class ImageRenamerApp:
 
         # Create the ReMystery layout within this frame
         self.create_mystory_tab(mystory_frame)
+
+    def show_remark_tool(self):
+        # Clear content area
+        for widget in self.content_area.winfo_children():
+            widget.destroy()
+
+        # Create ReMark interface in content area
+        remark_frame = ctk.CTkFrame(
+            self.content_area,
+            fg_color="transparent"
+        )
+        remark_frame.pack(fill="both", expand=True)
+
+        # Create the ReMark layout within this frame
+        self.create_remark_tab(remark_frame)
 
     def create_reninja_tab(self, parent):
         # Create two-column layout
@@ -469,6 +484,321 @@ class ImageRenamerApp:
             ("2. Select Output", "Choose where to save the renamed images"),
             ("3. Set Sequence", "Enter the starting sequence number"),
             ("4. Process", "Click 'Process Batch' to rename all images")
+        ]
+
+        for step, desc in steps:
+            step_frame = ctk.CTkFrame(guide_frame, fg_color="transparent")
+            step_frame.pack(fill="x", padx=20, pady=5)
+            
+            ctk.CTkLabel(
+                step_frame,
+                text=step,
+                font=ctk.CTkFont(size=13, weight="bold")
+            ).pack(side="left")
+            
+            ctk.CTkLabel(
+                step_frame,
+                text=desc,
+                font=ctk.CTkFont(size=12)
+            ).pack(side="left", padx=(10, 0))
+
+    def create_remark_tab(self, parent):
+        # Create two-column layout
+        self.create_remark_sidebar(parent)
+        self.create_remark_main_area(parent)
+
+    def create_remark_sidebar(self, parent):
+        # Sidebar container
+        remark_sidebar = ctk.CTkFrame(
+            parent,
+            width=300,
+            corner_radius=0,
+            fg_color=("gray90", "gray15")
+        )
+        remark_sidebar.pack(side="left", fill="y", padx=0, pady=0)
+        remark_sidebar.pack_propagate(False)
+
+        # Input folder section with status
+        input_frame = ctk.CTkFrame(remark_sidebar, fg_color="transparent")
+        input_frame.pack(fill="x", padx=20, pady=10)
+        
+        input_label = ctk.CTkLabel(
+            input_frame,
+            text="Input Folder",
+            font=ctk.CTkFont(size=14, weight="bold")
+        )
+        input_label.pack(anchor="w")
+        
+        button_frame = ctk.CTkFrame(input_frame, fg_color="transparent")
+        button_frame.pack(fill="x", pady=(5, 0))
+        
+        self.remark_input_button = ctk.CTkButton(
+            button_frame,
+            text="Select Input Folder",
+            command=self.select_remark_input,
+            height=32,
+            corner_radius=8
+        )
+        self.remark_input_button.pack(side="left", fill="x", expand=True)
+        
+        self.remark_input_status = ctk.CTkLabel(
+            button_frame,
+            text="❌",
+            font=ctk.CTkFont(size=16),
+            width=30
+        )
+        self.remark_input_status.pack(side="right", padx=(10, 0))
+
+        # Output folder section with status
+        output_frame = ctk.CTkFrame(remark_sidebar, fg_color="transparent")
+        output_frame.pack(fill="x", padx=20, pady=10)
+        
+        output_label = ctk.CTkLabel(
+            output_frame,
+            text="Output Folder",
+            font=ctk.CTkFont(size=14, weight="bold")
+        )
+        output_label.pack(anchor="w")
+        
+        button_frame = ctk.CTkFrame(output_frame, fg_color="transparent")
+        button_frame.pack(fill="x", pady=(5, 0))
+        
+        self.remark_output_button = ctk.CTkButton(
+            button_frame,
+            text="Select Output Folder",
+            command=self.select_remark_output,
+            height=32,
+            corner_radius=8
+        )
+        self.remark_output_button.pack(side="left", fill="x", expand=True)
+        
+        self.remark_output_status = ctk.CTkLabel(
+            button_frame,
+            text="❌",
+            font=ctk.CTkFont(size=16),
+            width=30
+        )
+        self.remark_output_status.pack(side="right", padx=(10, 0))
+
+        # Watermark Settings Section
+        settings_frame = ctk.CTkFrame(remark_sidebar, fg_color="transparent")
+        settings_frame.pack(fill="x", padx=20, pady=10)
+        
+        settings_label = ctk.CTkLabel(
+            settings_frame,
+            text="Watermark Settings",
+            font=ctk.CTkFont(size=14, weight="bold")
+        )
+        settings_label.pack(anchor="w", pady=(0, 10))
+
+        # Watermark Text
+        text_frame = ctk.CTkFrame(settings_frame, fg_color="transparent")
+        text_frame.pack(fill="x", pady=5)
+        
+        text_label = ctk.CTkLabel(text_frame, text="Text:")
+        text_label.pack(side="left")
+        
+        self.watermark_text = ctk.StringVar(value="Supreme Auction Catalog Image")
+        text_entry = ctk.CTkEntry(
+            text_frame,
+            textvariable=self.watermark_text,
+            placeholder_text="Enter custom watermark text"
+        )
+        text_entry.pack(side="left", padx=10, fill="x", expand=True)
+
+        def reset_text():
+            self.watermark_text.set("Supreme Auction Catalog Image")
+        
+        reset_button = ctk.CTkButton(
+            text_frame,
+            text="↺",
+            width=30,
+            command=reset_text,
+            font=ctk.CTkFont(size=14)
+        )
+        reset_button.pack(side="right")
+
+        # Text Size
+        size_frame = ctk.CTkFrame(settings_frame, fg_color="transparent")
+        size_frame.pack(fill="x", pady=5)
+        
+        ctk.CTkLabel(size_frame, text="Size:").pack(side="left")
+        
+        self.watermark_size = ctk.StringVar(value="3.5")
+        size_entry = ctk.CTkEntry(
+            size_frame,
+            width=50,
+            textvariable=self.watermark_size
+        )
+        size_entry.pack(side="left", padx=10)
+        
+        ctk.CTkLabel(size_frame, text="% of image").pack(side="left")
+
+        # Text Opacity
+        opacity_frame = ctk.CTkFrame(settings_frame, fg_color="transparent")
+        opacity_frame.pack(fill="x", pady=5)
+        
+        ctk.CTkLabel(opacity_frame, text="Opacity:").pack(side="left")
+        
+        self.watermark_opacity = ctk.IntVar(value=90)
+        opacity_slider = ctk.CTkSlider(
+            opacity_frame,
+            from_=0,
+            to=100,
+            variable=self.watermark_opacity,
+            width=160
+        )
+        opacity_slider.pack(side="left", padx=10)
+        
+        opacity_value = ctk.CTkLabel(opacity_frame, text="90%")
+        opacity_value.pack(side="left")
+        
+        def update_opacity(value):
+            opacity_value.configure(text=f"{int(value)}%")
+        
+        opacity_slider.configure(command=update_opacity)
+
+        # Background Settings
+        bg_frame = ctk.CTkFrame(settings_frame, fg_color="transparent")
+        bg_frame.pack(fill="x", pady=5)
+        
+        self.bg_enabled = ctk.BooleanVar(value=False)
+        bg_switch = ctk.CTkSwitch(
+            bg_frame,
+            text="Background",
+            variable=self.bg_enabled,
+            onvalue=True,
+            offvalue=False
+        )
+        bg_switch.pack(side="left")
+
+        # Background Color
+        self.bg_color = ctk.StringVar(value="#000000")
+        
+        def pick_color():
+            color = colorchooser.askcolor(title="Choose Background Color")
+            if color[1]:
+                self.bg_color.set(color[1])
+                color_button.configure(fg_color=color[1])
+
+        color_button = ctk.CTkButton(
+            bg_frame,
+            text="",
+            width=30,
+            height=20,
+            fg_color=self.bg_color.get(),
+            command=pick_color
+        )
+        color_button.pack(side="right", padx=10)
+
+        # Background Opacity
+        bg_opacity_frame = ctk.CTkFrame(settings_frame, fg_color="transparent")
+        bg_opacity_frame.pack(fill="x", pady=5)
+        
+        ctk.CTkLabel(bg_opacity_frame, text="BG Opacity:").pack(side="left")
+        
+        self.bg_opacity = ctk.IntVar(value=50)
+        bg_opacity_slider = ctk.CTkSlider(
+            bg_opacity_frame,
+            from_=0,
+            to=100,
+            variable=self.bg_opacity,
+            width=160
+        )
+        bg_opacity_slider.pack(side="left", padx=10)
+        
+        bg_opacity_value = ctk.CTkLabel(bg_opacity_frame, text="50%")
+        bg_opacity_value.pack(side="left")
+        
+        def update_bg_opacity(value):
+            bg_opacity_value.configure(text=f"{int(value)}%")
+        
+        bg_opacity_slider.configure(command=update_bg_opacity)
+
+        # Create status frame for bottom elements
+        status_frame = ctk.CTkFrame(remark_sidebar, fg_color="transparent")
+        status_frame.pack(side="bottom", fill="x", padx=20, pady=20)
+
+        # Process button
+        self.remark_action_button = ctk.CTkButton(
+            status_frame,
+            text="Add Watermarks",
+            command=self.process_watermarks,
+            height=40,
+            corner_radius=8,
+            font=ctk.CTkFont(size=14, weight="bold"),
+            fg_color=self.colors["success"]
+        )
+        self.remark_action_button.pack(pady=(0, 20))
+
+        # Progress bar
+        self.remark_progress = ctk.CTkProgressBar(
+            status_frame,
+            height=6,
+            corner_radius=3,
+            progress_color=self.colors["accent"]
+        )
+        self.remark_progress.pack(fill="x", pady=(0, 10))
+        self.remark_progress.set(0)
+
+        # Status label
+        self.remark_status = ctk.CTkLabel(
+            status_frame,
+            text="Status: Ready",
+            font=ctk.CTkFont(size=12)
+        )
+        self.remark_status.pack(anchor="w")
+
+    def create_remark_main_area(self, parent):
+        # Main content area
+        remark_main = ctk.CTkFrame(
+            parent,
+            corner_radius=0,
+            fg_color="transparent"
+        )
+        remark_main.pack(side="left", fill="both", expand=True, padx=20, pady=20)
+
+        # Welcome section
+        welcome_frame = ctk.CTkFrame(
+            remark_main,
+            fg_color=("gray85", "gray17"),
+            corner_radius=10
+        )
+        welcome_frame.pack(fill="x", pady=(0, 20))
+
+        # Welcome header
+        ctk.CTkLabel(
+            welcome_frame,
+            text="Welcome to ReMark",
+            font=ctk.CTkFont(family="Helvetica", size=24, weight="bold"),
+            text_color=self.colors["accent"]
+        ).pack(pady=(20, 10))
+
+        ctk.CTkLabel(
+            welcome_frame,
+            text="Watermark Your Catalog Images",
+            font=ctk.CTkFont(size=14)
+        ).pack(pady=(0, 20))
+
+        # Quick start guide
+        guide_frame = ctk.CTkFrame(
+            remark_main,
+            fg_color=("gray85", "gray17"),
+            corner_radius=10
+        )
+        guide_frame.pack(fill="x", pady=(0, 20))
+
+        ctk.CTkLabel(
+            guide_frame,
+            text="Quick Start Guide",
+            font=ctk.CTkFont(size=16, weight="bold"),
+            text_color=self.colors["accent"]
+        ).pack(pady=(20, 10))
+
+        steps = [
+            ("1. Select Input", "Choose the folder containing your images"),
+            ("2. Select Output", "Choose where to save the watermarked images"),
+            ("3. Process", "Click 'Add Watermarks' to process all images")
         ]
 
         for step, desc in steps:
@@ -841,7 +1171,7 @@ class ImageRenamerApp:
                     print(f"Error loading image {img_name}: {e}")
 
                 # Schedule next image load
-                self.app.after(10, load_image, index + 1)
+                self.app.after(100, load_image, index + 1)
 
             def display_loaded_images():
                 # Create container for image grid
@@ -1538,6 +1868,131 @@ class ImageRenamerApp:
             self.mystory_output = folder_selected
             self.mystory_output_status.configure(text="✓", text_color="green")
             self.mystory_status.configure(text=f"Selected output folder: {folder_selected}")
+
+    def select_remark_input(self):
+        folder_selected = filedialog.askdirectory()
+        if folder_selected:
+            self.remark_input_folder = folder_selected
+            self.remark_input_status.configure(text="✓", text_color="green")
+            self.remark_status.configure(text=f"Selected input folder: {folder_selected}")
+
+    def select_remark_output(self):
+        folder_selected = filedialog.askdirectory()
+        if folder_selected:
+            self.remark_output_folder = folder_selected
+            self.remark_output_status.configure(text="✓", text_color="green")
+            self.remark_status.configure(text=f"Selected output folder: {folder_selected}")
+
+    def process_watermarks(self):
+        if not hasattr(self, 'remark_input_folder') or not hasattr(self, 'remark_output_folder'):
+            messagebox.showerror("Error", "Please select both input and output folders.")
+            return
+
+        # Create output directory if it doesn't exist
+        os.makedirs(self.remark_output_folder, exist_ok=True)
+
+        # Get all images from input folder
+        images = [f for f in os.listdir(self.remark_input_folder) 
+                 if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+        
+        if not images:
+            messagebox.showerror("Error", "No images found in input folder.")
+            return
+
+        # Get watermark text (use default if empty)
+        watermark_text = self.watermark_text.get().strip()
+        if not watermark_text:
+            watermark_text = "Supreme Auction Catalog Image"
+
+        # Disable the action button during processing
+        self.remark_action_button.configure(state="disabled")
+        
+        # Process images one at a time
+        def process_image(index):
+            if index >= len(images):
+                # All done
+                self.remark_progress.set(1.0)
+                self.remark_status.configure(text=f"Finished. {len(images)} images processed.")
+                self.remark_action_button.configure(state="normal")
+                
+                # Open the output folder
+                if os.name == 'nt':  # Windows
+                    os.startfile(self.remark_output_folder)
+                else:  # macOS and Linux
+                    subprocess.Popen(['open', self.remark_output_folder]) if os.name == 'posix' else subprocess.Popen(['xdg-open', self.remark_output_folder])
+                return
+            
+            img_name = images[index]
+            progress = (index + 1) / len(images)
+            self.remark_progress.set(progress)
+            self.remark_status.configure(text=f"Processing {index+1} of {len(images)}: {img_name}")
+
+            try:
+                # Open image
+                img_path = os.path.join(self.remark_input_folder, img_name)
+                img = Image.open(img_path)
+                
+                # Create a copy of the image for drawing
+                watermarked = img.copy()
+                
+                # Create drawing object
+                draw = ImageDraw.Draw(watermarked)
+                
+                # Get size from settings
+                try:
+                    size_percent = float(self.watermark_size.get())
+                except ValueError:
+                    size_percent = 3.5
+                
+                # Calculate font size based on image size
+                font_size = int(min(img.size) * (size_percent / 100))
+                try:
+                    font = ImageFont.truetype("arial.ttf", font_size)
+                except:
+                    font = ImageFont.load_default()
+                
+                # Get text size
+                text_bbox = draw.textbbox((0, 0), watermark_text, font=font)
+                text_width = text_bbox[2] - text_bbox[0]
+                text_height = text_bbox[3] - text_bbox[1]
+                
+                # Calculate position (bottom right with padding)
+                padding = 20
+                x = img.width - text_width - padding
+                y = img.height - text_height - padding
+                
+                # Get opacity values
+                text_opacity = int(255 * (self.watermark_opacity.get() / 100))
+                
+                # Draw background if enabled
+                if self.bg_enabled.get():
+                    bg_color = self.bg_color.get()
+                    # Convert hex color to RGB with opacity
+                    bg_rgb = tuple(int(bg_color[i:i+2], 16) for i in (1, 3, 5))
+                    bg_opacity = int(255 * (self.bg_opacity.get() / 100))
+                    bg_bbox = (x - padding, y - padding, x + text_width + padding, y + text_height + padding)
+                    draw.rectangle(bg_bbox, fill=bg_rgb + (bg_opacity,))
+                
+                # Draw shadow and text
+                shadow_offset = 2
+                draw.text((x + shadow_offset, y + shadow_offset), watermark_text, font=font, fill=(0, 0, 0, text_opacity))
+                draw.text((x, y), watermark_text, font=font, fill=(255, 255, 255, text_opacity))
+                
+                # Save the watermarked image
+                output_path = os.path.join(self.remark_output_folder, img_name)
+                watermarked.save(output_path, quality=95)
+
+            except Exception as e:
+                self.remark_status.configure(text=f"Error processing {img_name}: {str(e)}")
+                messagebox.showerror("Error", f"Error processing {img_name}: {str(e)}")
+                self.remark_action_button.configure(state="normal")
+                return
+
+            # Schedule the next image processing
+            self.app.after(100, process_image, index + 1)
+
+        # Start processing the first image
+        process_image(0)
 
     def check_for_updates(self):
         has_update, latest_version, download_url = UpdateChecker.check_for_updates()

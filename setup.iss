@@ -1,5 +1,5 @@
 #define MyAppName "ReNinja"
-#define MyAppVersion "1.0.3"
+#define MyAppVersion "1.1.0"
 #define MyAppPublisher "V0rt3xRP"
 #define MyAppURL "https://github.com/V0rt3xRP/supreme_auction_tools"
 #define MyAppExeName "ReNinja.exe"
