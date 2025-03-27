@@ -2,6 +2,13 @@
 
 A powerful image batch renaming tool with CSV mapping support.
 
+## Installation
+
+1. Go to the [Releases](https://github.com/V0rt3xRP/supreme_auction_tools/releases) page
+2. Download `ReNinja_Setup.exe` from the latest release
+3. Run the installer
+4. Follow the installation wizard
+
 ## Features
 
 - CSV-based image renaming
@@ -12,55 +19,6 @@ A powerful image batch renaming tool with CSV mapping support.
 - Progress tracking
 - Duplicate handling
 - Mapping file generation
-
-## Installation
-
-1. Download the latest installer from the [Releases](https://github.com/V0rt3xRP/supreme_auction_tools/releases) page
-2. Run the installer
-3. Follow the installation wizard
-
-## Development Setup
-
-1. Clone the repository:
-```bash
-git clone https://github.com/V0rt3xRP/supreme_auction_tools.git
-cd supreme_auction_tools
-```
-
-2. Create a virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-3. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-4. Run the application:
-```bash
-python ReNinja.py
-```
-
-## Building from Source
-
-1. Install PyInstaller:
-```bash
-pip install pyinstaller
-```
-
-2. Build the executable:
-```bash
-pyinstaller --noconsole --icon=assets/reninja_logo.ico ReNinja.py
-```
-
-3. Build the installer (requires Inno Setup):
-```bash
-iscc setup.iss
-```
-
-The installer will be created in the `output` directory.
 
 ## Usage
 
@@ -77,6 +35,6 @@ The application checks for updates automatically on startup. When an update is a
 2. Choose to update now or later
 3. The update will download and install automatically
 
-## License
+## Support
 
-MIT License © V0rt3xRP 
+If you encounter any issues or have questions, please [create an issue](https://github.com/V0rt3xRP/supreme_auction_tools/issues). 

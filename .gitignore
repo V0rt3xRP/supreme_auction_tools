@@ -60,4 +60,16 @@ coverage.xml
 # Temp files
 *.tmp
 *.bak
-*.swp 
+*.swp
+
+# Ignore everything
+*
+
+# But don't ignore these files
+!.gitignore
+!README.md
+!LICENSE
+
+# Don't ignore the output directory and the installer
+!output/
+!output/ReNinja_Setup.exe 
